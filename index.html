@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lista de Presença – Viola Viva</title>
+
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+</head>
+
+<body>
+  <header>
+    <h1 id="titulo">Lista de Presença</h1>
+    <p id="subtitulo"></p>
+  </header>
+
+  <div class="barra">
+    <label>Professor:</label>
+    <select id="professor">
+      <option value="">Selecione</option>
+      <option value="PRETO">Professor Preto</option>
+      <option value="CHICO">Professor Chico</option>
+    </select>
+
+    <label>Data:</label>
+    <input type="date" id="data">
+    <span id="status"></span>
+  </div>
+
+  <main id="lista"></main>
+
+  <footer>
+    <small>Projeto Viola Viva – Sicoob Credivertentes</small>
+  </footer>
+
+<script>
+const api = window.APP_CONFIG.API_URL;
+const selProf = document.getElementById("professor");
+const lista = document.getElementById("lista");
+const titulo = document.getElementById("titulo");
+const subtitulo = document.getElementById("subtitulo");
+const dataInput = document.getElementById("data");
+const statusTxt = document.getElementById("status");
+
+dataInput.valueAsDate = new Date();
+
+selProf.addEventListener("change", carregar);
+dataInput.addEventListener("change", carregar);
+
+async function carregar(){
+  const prof = selProf.value;
+  if(!prof) return;
+
+  statusTxt.textContent = "Carregando...";
+  lista.innerHTML = "";
+
+  const res = await fetch(`${api}?action=context&prof=${prof}`);
+  const json = await res.json();
+
+  if(!json.ok){
+    statusTxt.textContent = "Erro ao carregar";
+    return;
+  }
+
+  titulo.textContent = "Lista de Presença – " + json.professor.nome;
+  subtitulo.textContent = json.professor.turma;
+  dataInput.value = json.data;
+
+  json.alunos.forEach(nome => {
+    const div = document.createElement("div");
+    div.className = "aluno";
+    div.innerHTML = `
+      <strong>${nome}</strong>
+      <div>
+        <button class="p" onclick="marcar('${nome}','P')">P</button>
+        <button class="f" onclick="marcar('${nome}','F')">F</button>
+      </div>
+    `;
+    lista.appendChild(div);
