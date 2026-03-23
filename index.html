@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Lista de Presença – Viola Viva</title>
 
   <link rel="stylesheet" href="styles.css">
@@ -31,50 +31,85 @@
   <main id="lista"></main>
 
   <footer>
-    <small>Projeto Viola Viva – Sicoob Credivertentes</small>
+    Projeto Viola Viva – Sicoob Credivertentes
   </footer>
 
 <script>
-const api = window.APP_CONFIG.API_URL;
-const selProf = document.getElementById("professor");
+const API = window.APP_CONFIG.API_URL;
+
+const selProfessor = document.getElementById("professor");
 const lista = document.getElementById("lista");
 const titulo = document.getElementById("titulo");
 const subtitulo = document.getElementById("subtitulo");
 const dataInput = document.getElementById("data");
 const statusTxt = document.getElementById("status");
 
-dataInput.valueAsDate = new Date();
+// data de hoje
+const hoje = new Date();
+hoje.setMinutes(hoje.getMinutes() - hoje.getTimezoneOffset());
+dataInput.value = hoje.toISOString().slice(0,10);
 
-selProf.addEventListener("change", carregar);
-dataInput.addEventListener("change", carregar);
+selProfessor.addEventListener("change", carregar);
 
 async function carregar(){
-  const prof = selProf.value;
-  if(!prof) return;
+  const prof = selProfessor.value;
+  if(!prof){
+    lista.innerHTML = "";
+    return;
+  }
 
   statusTxt.textContent = "Carregando...";
   lista.innerHTML = "";
 
-  const res = await fetch(`${api}?action=context&prof=${prof}`);
-  const json = await res.json();
+  try{
+    const resp = await fetch(`${API}?action=context&prof=${prof}`);
+    const json = await resp.json();
 
-  if(!json.ok){
-    statusTxt.textContent = "Erro ao carregar";
-    return;
+    if(!json.ok){
+      statusTxt.textContent = "Erro ao carregar dados";
+      return;
+    }
+
+    titulo.textContent = "Lista de Presença – " + json.professor.nome;
+    subtitulo.textContent = json.professor.turma;
+    dataInput.value = json.data;
+
+    json.alunos.forEach(aluno => {
+      const linha = document.createElement("div");
+      linha.className = "aluno";
+
+      linha.innerHTML = `
+        <span>${aluno}</span>
+        <div>
+          <button class="p" onclick="marcar('${aluno}','P')">P</button>
+          <button class="f" onclick="marcar('${aluno}','F')">F</button>
+        </div>
+      `;
+      lista.appendChild(linha);
+    });
+
+    statusTxt.textContent = "";
+  } catch(e){
+    statusTxt.textContent = "Falha de conexão";
   }
+}
 
-  titulo.textContent = "Lista de Presença – " + json.professor.nome;
-  subtitulo.textContent = json.professor.turma;
-  dataInput.value = json.data;
+async function marcar(aluno, status){
+  const body = new URLSearchParams({
+    action: "salvar",
+    data: dataInput.value,
+    turma: subtitulo.textContent,
+    aluno: aluno,
+    status: status,
+    professor: titulo.textContent.replace("Lista de Presença – ","")
+  });
 
-  json.alunos.forEach(nome => {
-    const div = document.createElement("div");
-    div.className = "aluno";
-    div.innerHTML = `
-      <strong>${nome}</strong>
-      <div>
-        <button class="p" onclick="marcar('${nome}','P')">P</button>
-        <button class="f" onclick="marcar('${nome}','F')">F</button>
-      </div>
-    `;
-    lista.appendChild(div);
+  await fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/x-www-form-urlencoded"},
+    body
+  });
+}
+</script>
+</body>
+</html>
